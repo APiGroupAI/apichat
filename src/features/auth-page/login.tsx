@@ -36,7 +36,7 @@ export const LogIn: FC<LoginProps> = (props) => {
         <Button onClick={() => signIn("azure-ad")}> Microsoft</Button>
         {props.isDevMode ? (
           <Button onClick={() => signIn("localdev")}>
-            Basic Auth (DEV ONLY)
+            Basic Auth (DEV ONLY!)
           </Button>
         )}
       </CardContent>
