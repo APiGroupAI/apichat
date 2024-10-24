@@ -3,12 +3,10 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - main
-      - oct-update
+      - novupdate
   pull_request:
     branches:
-      - main
-      - oct-update
+      - novupdate
 
 jobs:
   build:
