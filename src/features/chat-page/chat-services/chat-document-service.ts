@@ -36,7 +36,7 @@ export const CrackDocument = async (
       }
 
       return fileResponse;
-    }
+    } 
 
     return response;
   } catch (e) {
