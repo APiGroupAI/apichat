@@ -14,8 +14,6 @@ import {
 
 interface LoginProps {
   isDevMode: boolean;
-  githubEnabled: boolean;
-  entraIdEnabled: boolean;
 }
 
 export const LogIn: FC<LoginProps> = (props) => {
@@ -36,9 +34,9 @@ export const LogIn: FC<LoginProps> = (props) => {
         <Button onClick={() => signIn("azure-ad")}> Microsoft</Button>
         {props.isDevMode ? (
           <Button onClick={() => signIn("localdev")}>
-            Basic Auth (DEV ONLY!)
+            Basic Auth (DEV ONLY)
           </Button>
-        )}
+        ) : null}
       </CardContent>
     </Card>
   );
