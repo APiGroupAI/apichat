@@ -4,16 +4,6 @@ param resourceToken string
 param openai_api_version string
 
 param openAiLocation string
-<<<<<<< HEAD
-param openAiSkuName string 
-param chatGptDeploymentCapacity int 
-param chatGptDeploymentName string
-param chatGptModelName string 
-param chatGptModelVersion string
-param embeddingDeploymentName string 
-param embeddingDeploymentCapacity int
-param embeddingModelName string 
-=======
 param openAiSkuName string
 param chatGptDeploymentCapacity int
 param chatGptDeploymentName string
@@ -22,7 +12,6 @@ param chatGptModelVersion string
 param embeddingDeploymentName string
 param embeddingDeploymentCapacity int
 param embeddingModelName string
->>>>>>> upstream/main
 
 param dalleLocation string
 param dalleDeploymentCapacity int
@@ -269,108 +258,7 @@ resource webApp 'Microsoft.Web/sites@2024-04-01' = {
       appCommandLine: 'next start'
       ftpsState: 'Disabled'
       minTlsVersion: '1.2'
-<<<<<<< HEAD
-      appSettings: [ 
-        { 
-          name: 'AZURE_KEY_VAULT_NAME'
-          value: keyVaultName
-        }
-        { 
-          name: 'SCM_DO_BUILD_DURING_DEPLOYMENT'
-          value: 'true'
-        }
-        {
-          name: 'AZURE_OPENAI_API_KEY'
-          value: '@Microsoft.KeyVault(VaultName=${kv.name};SecretName=${kv::AZURE_OPENAI_API_KEY.name})'
-        }
-        {
-          name: 'AZURE_OPENAI_API_INSTANCE_NAME'
-          value: openai_name
-        }
-        {
-          name: 'AZURE_OPENAI_API_DEPLOYMENT_NAME'
-          value: chatGptDeploymentName
-        }
-        {
-          name: 'AZURE_OPENAI_API_EMBEDDINGS_DEPLOYMENT_NAME'
-          value: embeddingDeploymentName
-        }
-        {
-          name: 'AZURE_OPENAI_API_VERSION'
-          value: openai_api_version
-        }
-        {
-          name: 'AZURE_OPENAI_DALLE_API_KEY'
-          value: '@Microsoft.KeyVault(VaultName=${kv.name};SecretName=${kv::AZURE_OPENAI_DALLE_API_KEY.name})'
-        }
-        {
-          name: 'AZURE_OPENAI_DALLE_API_INSTANCE_NAME'
-          value: openai_dalle_name
-        }
-        {
-          name: 'AZURE_OPENAI_DALLE_API_DEPLOYMENT_NAME'
-          value: dalleDeploymentName
-        }
-        {
-          name: 'AZURE_OPENAI_DALLE_API_VERSION'
-          value: dalleApiVersion
-        }
-        {
-          name: 'NEXTAUTH_SECRET'
-          value: '@Microsoft.KeyVault(VaultName=${kv.name};SecretName=${kv::NEXTAUTH_SECRET.name})'
-        }
-        {
-          name: 'NEXTAUTH_URL'
-          value: 'https://${webapp_name}.azurewebsites.net'
-        }
-        {
-          name: 'AZURE_COSMOSDB_URI'
-          value: cosmosDbAccount.properties.documentEndpoint
-        }
-        {
-          name: 'AZURE_COSMOSDB_KEY'
-          value: '@Microsoft.KeyVault(VaultName=${kv.name};SecretName=${kv::AZURE_COSMOSDB_KEY.name})'
-        }
-        {
-          name: 'AZURE_SEARCH_API_KEY'
-          value: '@Microsoft.KeyVault(VaultName=${kv.name};SecretName=${kv::AZURE_SEARCH_API_KEY.name})'
-        }
-        { 
-          name: 'AZURE_SEARCH_NAME'
-          value: search_name
-        }
-        { 
-          name: 'AZURE_SEARCH_INDEX_NAME'
-          value: searchServiceIndexName
-        }
-        { 
-          name: 'AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT'
-          value: 'https://${form_recognizer_name}.cognitiveservices.azure.com/'
-        }        
-        {
-          name: 'AZURE_DOCUMENT_INTELLIGENCE_KEY'
-          value: '@Microsoft.KeyVault(VaultName=${kv.name};SecretName=${kv::AZURE_DOCUMENT_INTELLIGENCE_KEY.name})'
-        }
-        {
-          name: 'AZURE_SPEECH_REGION'
-          value: location
-        }
-        {
-          name: 'AZURE_SPEECH_KEY'
-          value: '@Microsoft.KeyVault(VaultName=${kv.name};SecretName=${kv::AZURE_SPEECH_KEY.name})'
-        }
-        {
-          name: 'AZURE_STORAGE_ACCOUNT_NAME'
-          value: storage_name
-        }
-        {
-          name: 'AZURE_STORAGE_ACCOUNT_KEY'
-          value: '@Microsoft.KeyVault(VaultName=${kv.name};SecretName=${kv::AZURE_STORAGE_ACCOUNT_KEY.name})'
-        }
-      ]
-=======
       appSettings: concat(appSettingsCommon, appSettingsWithLocalAuth)
->>>>>>> upstream/main
     }
   }
   identity: { type: 'SystemAssigned' }
@@ -435,11 +323,7 @@ resource kv 'Microsoft.KeyVault/vaults@2024-12-01-preview' = {
     publicNetworkAccess: usePrivateEndpoints ? 'Disabled' : 'Enabled'
   }
 
-<<<<<<< HEAD
-  resource AZURE_OPENAI_API_KEY 'secrets' = {
-=======
   resource AZURE_OPENAI_API_KEY 'secrets' = if (!disableLocalAuth) {
->>>>>>> upstream/main
     name: 'AZURE-OPENAI-API-KEY'
     properties: {
       contentType: 'text/plain'
@@ -611,26 +495,12 @@ resource azureopenai 'Microsoft.CognitiveServices/accounts@2023-05-01' = {
 }
 
 @batchSize(1)
-<<<<<<< HEAD
-resource llmdeployment 'Microsoft.CognitiveServices/accounts/deployments@2023-05-01' = [for deployment in llmDeployments: {
-  parent: azureopenai
-  name: deployment.name
-  properties: {
-    model: deployment.model
-  }
-  sku: deployment.sku != null ? deployment.sku : {
-    name: 'Standard'
-    capacity: deployment.capacity
-  }
-}]
-=======
 resource llmdeployment 'Microsoft.CognitiveServices/accounts/deployments@2023-05-01' = [
   for deployment in llmDeployments: {
     parent: azureopenai
     name: deployment.name
     properties: {
       model: deployment.model
-      /*raiPolicyName: contains(deployment, 'raiPolicyName') ? deployment.raiPolicyName : null*/
     }
     sku: contains(deployment, 'sku')
       ? deployment.sku
@@ -640,9 +510,6 @@ resource llmdeployment 'Microsoft.CognitiveServices/accounts/deployments@2023-05
         }
   }
 ]
->>>>>>> upstream/main
-
-
 
 resource azureopenaidalle 'Microsoft.CognitiveServices/accounts@2023-05-01' = {
   name: openai_dalle_name
@@ -673,11 +540,6 @@ resource azureopenaidalle 'Microsoft.CognitiveServices/accounts@2023-05-01' = {
   }
 }
 
-<<<<<<< HEAD
-
-
-=======
->>>>>>> upstream/main
 resource speechService 'Microsoft.CognitiveServices/accounts@2023-05-01' = {
   name: speech_service_name
   location: location
@@ -687,7 +549,6 @@ resource speechService 'Microsoft.CognitiveServices/accounts@2023-05-01' = {
     customSubDomainName: speech_service_name
     // called from the browser so public endpoint is required
     publicNetworkAccess: 'Enabled'
-    /* TODO: disableLocalAuth: disableLocalAuth*/
   }
   sku: {
     name: speechServiceSkuName
