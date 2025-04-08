@@ -1,4 +1,3 @@
-import { CreateChatAndRedirect } from "@/features/chat-page/chat-services/chat-thread-service";
 import { ChatContextMenu } from "@/features/chat-page/chat-menu/chat-context-menu";
 import { NewChat } from "@/features/chat-page/chat-menu/new-chat";
 import { AddExtension } from "@/features/extensions-page/add-extension/add-new-extension";
@@ -38,9 +37,9 @@ export const ChatHome: FC<ChatPersonaProps> = (props) => {
         ></Hero>
 
         <div className="flex p-2 px-3 justify-center">
-          <form action={CreateChatAndRedirect} className="flex gap-2 pr-3">
+          <div className="flex gap-2 pr-3">
               <NewChat size="lg" textSize="20px"/>
-          </form>
+          </div>
         </div>
         
         {/* Comment out the Extensions part
