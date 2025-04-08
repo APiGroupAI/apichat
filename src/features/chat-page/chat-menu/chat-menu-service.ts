@@ -12,9 +12,24 @@ import {
 } from "../chat-services/chat-thread-service";
 import { ChatThreadModel } from "../chat-services/models";
 
-export const DeleteChatThreadByID = async (chatThreadID: string) => {
-  await SoftDeleteChatThreadForCurrentUser(chatThreadID);
-  RedirectToPage("chat");
+export const DeleteChatThreadByID = async (
+  chatThreadID: string
+): Promise<ServerActionResponse<boolean>> => {
+  const response = await SoftDeleteChatThreadForCurrentUser(chatThreadID);
+  if (response.status === "OK") {
+    RevalidateCache({
+      page: "chat",
+      type: "layout",
+    });
+    return {
+      status: "OK",
+      response: true,
+    };
+  }
+  return {
+    status: response.status,
+    errors: response.errors,
+  };
 };
 
 export const DeleteAllChatThreads = async (): Promise<

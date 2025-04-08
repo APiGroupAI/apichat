@@ -10,7 +10,7 @@ import { LoadingIndicator } from "@/features/ui/loading";
 import { cn } from "@/ui/lib";
 import { BookmarkCheck, MoreVertical, Pencil, Trash } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { FC, useState } from "react";
 import { ChatThreadModel } from "../chat-services/models";
 import {
@@ -18,6 +18,7 @@ import {
   DeleteChatThreadByID,
   UpdateChatThreadTitle,
 } from "./chat-menu-service";
+import { showError } from "@/features/globals/global-message-store";
 
 interface ChatMenuItemProps {
   href: string;
@@ -85,6 +86,7 @@ type DropdownAction = "bookmark" | "rename" | "delete";
 const useDropdownAction = (props: { chatThread: ChatThreadModel }) => {
   const { chatThread } = props;
   const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
 
   const handleAction = async (action: DropdownAction) => {
     setIsLoading(true);
@@ -102,7 +104,20 @@ const useDropdownAction = (props: { chatThread: ChatThreadModel }) => {
         if (
           window.confirm("Are you sure you want to delete this chat thread?")
         ) {
-          await DeleteChatThreadByID(chatThread.id);
+          const response = await DeleteChatThreadByID(chatThread.id);
+          if (response.status === "OK") {
+            router.refresh();
+          } else {
+            showError(
+              response.errors?.map((e) => e.message).join(", ") ||
+                "Failed to delete chat thread"
+            );
+            setIsLoading(false);
+            return;
+          }
+        } else {
+          setIsLoading(false);
+          return;
         }
         break;
     }
