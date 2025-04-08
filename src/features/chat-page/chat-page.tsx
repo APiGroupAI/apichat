@@ -8,6 +8,7 @@ import ChatMessageContentArea from "@/features/ui/chat/chat-message-area/chat-me
 import { useChatScrollAnchor } from "@/features/ui/chat/chat-message-area/use-chat-scroll-anchor";
 import { useSession } from "next-auth/react";
 import { FC, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { ExtensionModel } from "../extensions-page/extension-services/models";
 import { ChatHeader } from "./chat-header/chat-header";
 import {
@@ -26,6 +27,8 @@ interface ChatPageProps {
 
 export const ChatPage: FC<ChatPageProps> = (props) => {
   const { data: session } = useSession();
+  const router = useRouter();
+  const prevLoadingRef = useRef<string>();
 
   useEffect(() => {
     chatStore.initChatSession({
@@ -36,6 +39,13 @@ export const ChatPage: FC<ChatPageProps> = (props) => {
   }, [props.messages, session?.user?.name, props.chatThread]);
 
   const { messages, loading } = useChat();
+
+  useEffect(() => {
+    if (prevLoadingRef.current === "loading" && loading === "idle") {
+      router.refresh();
+    }
+    prevLoadingRef.current = loading;
+  }, [loading, router]);
 
   const current = useRef<HTMLDivElement>(null);
 
