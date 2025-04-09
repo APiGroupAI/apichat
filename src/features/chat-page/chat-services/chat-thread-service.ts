@@ -339,5 +339,10 @@ export const CreateChatAndRedirect = async () => {
   if (response.status === "OK") {
     RedirectToChatThread(response.response.id);
     return;
+  } else {
+    // Log error if chat thread creation failed
+    console.error("Failed to create chat thread:", response.errors);
+    // Optionally, return the error response explicitly
+    // return response;
   }
 };
