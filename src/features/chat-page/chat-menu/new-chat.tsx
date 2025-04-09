@@ -27,11 +27,11 @@ export const NewChat: React.FC<NewChatProps> = ({ size = "default", textSize}) =
         RedirectToChatThread(response.response.id);
       } else {
         showError(response.errors.map((e) => e.message).join(", "));
-        setIsLoading(false);
       }
     } catch (error) {
       showError("An unexpected error occurred while creating the chat.");
       console.error(error);
+    } finally {
       setIsLoading(false);
     }
   };
