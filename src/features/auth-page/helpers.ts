@@ -1,12 +1,10 @@
 import { createHash } from "crypto";
-import NextAuth, { getServerSession } from "next-auth";
+import { getServerSession } from "next-auth";
 import { RedirectToPage } from "../common/navigation-helpers";
 import { options } from "./auth-api";
 
-const handler = NextAuth(options);
-
 export const userSession = async (): Promise<UserModel | null> => {
-  const session = await handler.auth();
+  const session = await getServerSession(options);
   if (session && session.user) {
     return {
       name: session.user.name!,
