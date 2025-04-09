@@ -1,8 +1,12 @@
-import { redirectIfAuthenticated } from "@/features/auth-page/helpers";
+import { userSession } from "@/features/auth-page/helpers";
 import { LogIn } from "@/features/auth-page/login";
+import { redirect } from "next/navigation";
 
 export default async function Home() {
-  await redirectIfAuthenticated();
+  const user = await userSession();
+  if (user) {
+    redirect("/chat");
+  }
   return (
     <main className="container max-w-lg flex items-center">
       <LogIn
