@@ -71,6 +71,7 @@ class ChatState {
     this.chatThreadId = chatThread.id;
     this.messages = messages;
     this.userName = userName;
+    this.loading = "idle";
   }
 
   public async AddExtensionToChatThread(extensionId: string) {
