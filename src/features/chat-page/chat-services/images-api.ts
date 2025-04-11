@@ -9,7 +9,8 @@ export const ImageAPIEntry = async (request: Request): Promise<Response> => {
   const response = GetThreadAndImageFromUrl(urlPath);
 
   if (response.status !== "OK") {
-    return new Response(response.errors[0].message, { status: 404 });
+    const errorMessage = response.errors?.[0]?.message || "An unknown error occurred retrieving the image URL details.";
+    return new Response(errorMessage, { status: 404 });
   }
 
   const { threadId, imgName } = response.response;
@@ -20,6 +21,7 @@ export const ImageAPIEntry = async (request: Request): Promise<Response> => {
       headers: { "content-type": "image/png" },
     });
   } else {
-    return new Response(imageData.errors[0].message, { status: 404 });
+    const errorMessage = imageData.errors?.[0]?.message || "An unknown error occurred retrieving the image data.";
+    return new Response(errorMessage, { status: 404 });
   }
 };
