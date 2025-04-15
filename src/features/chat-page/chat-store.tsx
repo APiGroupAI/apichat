@@ -202,22 +202,35 @@ class ChatState {
               this.addToMessages(mappedFunctionResult);
               break;
             case "content":
-              const mappedContent: ChatMessageModel = {
-                id: responseType.response.id,
-                content: responseType.response.choices[0].message.content || "",
-                name: AI_NAME,
-                role: "assistant",
-                createdAt: new Date(),
-                isDeleted: false,
-                threadId: this.chatThreadId,
-                type: "CHAT_MESSAGE",
-                userId: "",
-                multiModalImage: "",
-              };
+              const chunk = responseType.response;
+              const deltaContent = chunk.choices[0]?.delta?.content;
+              const messageId = chunk.id;
 
-              this.addToMessages(mappedContent);
-              this.lastMessage = mappedContent.content;
+              if (deltaContent) {
+                const existingMessageIndex = this.messages.findIndex(
+                  (msg) => msg.id === messageId
+                );
 
+                if (existingMessageIndex > -1) {
+                  this.messages[existingMessageIndex].content += deltaContent;
+                  this.lastMessage = this.messages[existingMessageIndex].content;
+                } else {
+                  const newAssistantMessage: ChatMessageModel = {
+                    id: messageId,
+                    content: deltaContent,
+                    name: AI_NAME,
+                    role: "assistant",
+                    createdAt: new Date(),
+                    isDeleted: false,
+                    threadId: this.chatThreadId,
+                    type: "CHAT_MESSAGE",
+                    userId: "",
+                    multiModalImage: "",
+                  };
+                  this.messages.push(newAssistantMessage);
+                  this.lastMessage = deltaContent;
+                }
+              }
               break;
             case "abort":
               this.removeMessage(newUserMessage.id);

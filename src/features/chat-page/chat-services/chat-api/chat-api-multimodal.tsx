@@ -4,17 +4,18 @@ import "server-only";
 import { OpenAIInstance } from "@/features/common/services/openai";
 import { ChatCompletionStreamingRunner } from "openai/resources/beta/chat/completions";
 import { ChatThreadModel } from "../models";
-export const ChatApiMultimodal = (props: {
+
+export const ChatApiMultimodal = async (props: {
   chatThread: ChatThreadModel;
   userMessage: string;
   file: string;
   signal: AbortSignal;
-}): ChatCompletionStreamingRunner => {
+}): Promise<ChatCompletionStreamingRunner> => {
   const { chatThread, userMessage, signal, file } = props;
 
   const openAI = OpenAIInstance();
 
-  return openAI.beta.chat.completions.stream(
+  return await openAI.beta.chat.completions.stream(
     {
       model: "",
       stream: true,

@@ -1,5 +1,5 @@
 import { ChatCompletionSnapshot } from "openai/lib/ChatCompletionStream";
-import { ChatCompletionMessage } from "openai/resources/chat/completions";
+import { ChatCompletionMessage, ChatCompletionChunk } from "openai/resources/chat/completions";
 
 export const CHAT_DOCUMENT_ATTRIBUTE = "CHAT_DOCUMENT";
 export const CHAT_THREAD_ATTRIBUTE = "CHAT_THREAD";
@@ -83,7 +83,7 @@ export type AzureChatCompletionFunctionCallResult = {
 
 export type AzureChatCompletionContent = {
   type: "content";
-  response: ChatCompletionSnapshot;
+  response: ChatCompletionChunk;
 };
 
 export type AzureChatCompletionFinalContent = {

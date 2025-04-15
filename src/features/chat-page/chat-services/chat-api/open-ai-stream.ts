@@ -1,111 +1,126 @@
 import { AI_NAME } from "@/features/theme/theme-config";
-import { ChatCompletionStreamingRunner } from "openai/resources/beta/chat/completions";
+import { AzureChatCompletion, AzureChatCompletionAbort, ChatThreadModel } from "../models";
 import { CreateChatMessage } from "../chat-message-service";
-import {
-  AzureChatCompletion,
-  AzureChatCompletionAbort,
-  ChatThreadModel,
-} from "../models";
+import { ChatCompletionChunk } from "openai/resources/chat/completions";
+import { APIUserAbortError } from "openai";
 
 export const OpenAIStream = (props: {
-  runner: ChatCompletionStreamingRunner;
+  runner: AsyncIterable<ChatCompletionChunk>;
   chatThread: ChatThreadModel;
 }) => {
   const encoder = new TextEncoder();
-
   const { runner, chatThread } = props;
 
   const readableStream = new ReadableStream({
     async start(controller) {
       const streamResponse = (event: string, value: string) => {
-        controller.enqueue(encoder.encode(`event: ${event} \n`));
-        controller.enqueue(encoder.encode(`data: ${value} \n\n`));
+        controller.enqueue(encoder.encode(`event: ${event}\n`));
+        controller.enqueue(encoder.encode(`data: ${value}\n\n`));
       };
 
-      let lastMessage = "";
+      let accumulatedMessage = "";
+      let functionCallName = "";
+      let functionCallArguments = "";
+      let finalContent = "";
+      let errorOccurred = false;
 
-      runner
-        .on("content", (content) => {
-          const completion = runner.currentChatCompletionSnapshot;
+      try {
+        for await (const chunk of runner) {
+          const delta = chunk.choices[0]?.delta;
 
-          if (completion) {
+          if (delta?.content) {
+            accumulatedMessage += delta.content;
+            finalContent += delta.content;
             const response: AzureChatCompletion = {
               type: "content",
-              response: completion,
+              response: chunk,
             };
-            lastMessage = completion.choices[0].message.content ?? "";
             streamResponse(response.type, JSON.stringify(response));
-          }
-        })
-        .on("functionCall", async (functionCall) => {
-          await CreateChatMessage({
-            name: functionCall.name,
-            content: functionCall.arguments,
-            role: "function",
-            chatThreadId: chatThread.id,
-          });
+          } else if (delta?.function_call) {
+            if (delta.function_call.name) {
+              functionCallName = delta.function_call.name;
+            }
+            if (delta.function_call.arguments) {
+              functionCallArguments += delta.function_call.arguments;
+            }
+          } else if (chunk.choices[0]?.finish_reason) {
+            const finishReason = chunk.choices[0].finish_reason;
 
-          const response: AzureChatCompletion = {
-            type: "functionCall",
-            response: functionCall,
-          };
-          streamResponse(response.type, JSON.stringify(response));
-        })
-        .on("functionCallResult", async (functionCallResult) => {
-          const response: AzureChatCompletion = {
-            type: "functionCallResult",
-            response: functionCallResult,
-          };
-          await CreateChatMessage({
-            name: "tool",
-            content: functionCallResult,
-            role: "function",
-            chatThreadId: chatThread.id,
-          });
-          streamResponse(response.type, JSON.stringify(response));
-        })
-        .on("abort", (error) => {
+            if (finishReason === "function_call") {
+              await CreateChatMessage({
+                name: functionCallName,
+                content: functionCallArguments,
+                role: "function",
+                chatThreadId: chatThread.id,
+              });
+
+              const response: AzureChatCompletion = {
+                type: "functionCall",
+                response: { name: functionCallName, arguments: functionCallArguments },
+              };
+              streamResponse(response.type, JSON.stringify(response));
+
+              functionCallName = "";
+              functionCallArguments = "";
+
+            } else if (finishReason === "stop") {
+              await CreateChatMessage({
+                name: AI_NAME,
+                content: finalContent,
+                role: "assistant",
+                chatThreadId: props.chatThread.id,
+              });
+
+              const response: AzureChatCompletion = {
+                type: "finalContent",
+                response: finalContent,
+              };
+              streamResponse(response.type, JSON.stringify(response));
+            }
+          }
+        }
+      } catch (error: any) {
+        errorOccurred = true;
+        console.error("🔴 Stream error:", error);
+
+        if (error instanceof APIUserAbortError) {
+          console.log("Stream aborted by user.");
           const response: AzureChatCompletionAbort = {
             type: "abort",
-            response: "Chat aborted",
+            response: "Chat aborted by user.",
           };
           streamResponse(response.type, JSON.stringify(response));
-          controller.close();
-        })
-        .on("error", async (error) => {
-          console.log("🔴 error", error);
+        } else {
           const response: AzureChatCompletion = {
             type: "error",
-            response: error.message,
-          };
-
-          // if there is an error still save the last message even though it is not complete
-          await CreateChatMessage({
-            name: AI_NAME,
-            content: lastMessage,
-            role: "assistant",
-            chatThreadId: props.chatThread.id,
-          });
-
-          streamResponse(response.type, JSON.stringify(response));
-          controller.close();
-        })
-        .on("finalContent", async (content: string) => {
-          await CreateChatMessage({
-            name: AI_NAME,
-            content: content,
-            role: "assistant",
-            chatThreadId: props.chatThread.id,
-          });
-
-          const response: AzureChatCompletion = {
-            type: "finalContent",
-            response: content,
+            response: error.message || "An unexpected error occurred.",
           };
           streamResponse(response.type, JSON.stringify(response));
+
+          if (finalContent) {
+            try {
+              await CreateChatMessage({
+                name: AI_NAME,
+                content: finalContent,
+                role: "assistant",
+                chatThreadId: props.chatThread.id,
+              });
+            } catch (saveError) {
+              console.error("🔴 Error saving message after stream error:", saveError);
+            }
+          }
+        }
+      } finally {
+        if (!errorOccurred) {
+          if (finalContent.length > 0) {
+          }
           controller.close();
-        });
+        }
+      }
     },
+    cancel(reason) {
+      console.log("Stream cancelled:", reason);
+    }
   });
 
   return readableStream;
