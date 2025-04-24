@@ -66,6 +66,7 @@ export const ChatPage: FC<ChatPageProps> = (props) => {
                 key={message.id}
                 profileName={message.name}
                 role={message.role}
+                modelType={message.modelType}
                 onCopy={() => {
                   navigator.clipboard.writeText(message.content);
                 }}

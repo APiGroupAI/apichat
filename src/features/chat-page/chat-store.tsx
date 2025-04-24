@@ -232,6 +232,7 @@ class ChatState {
                     type: "CHAT_MESSAGE",
                     userId: "",
                     multiModalImage: "",
+                    modelType: this.modelType,
                   };
                   this.messages.push(newAssistantMessage);
                   this.lastMessage = deltaContent;

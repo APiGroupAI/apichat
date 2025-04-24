@@ -25,6 +25,7 @@ export default function ReportingChatPage(props: ReportingChatPageProps) {
                 key={message.id}
                 profileName={message.name}
                 role={message.role}
+                modelType={message.modelType}
                 onCopy={() => {
                   navigator.clipboard.writeText(message.content);
                 }}

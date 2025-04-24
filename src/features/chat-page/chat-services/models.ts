@@ -16,6 +16,7 @@ export interface ChatMessageModel {
   role: ChatRole;
   name: string;
   multiModalImage?: string;
+  modelType?: "default" | "o3_reasoning";
   type: typeof MESSAGE_ATTRIBUTE;
 }
 

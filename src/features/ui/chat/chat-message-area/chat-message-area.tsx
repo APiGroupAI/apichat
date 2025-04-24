@@ -5,6 +5,7 @@ import {
   ClipboardIcon,
   PocketKnife,
   UserCircle,
+  Sparkles
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Avatar, AvatarImage } from "../../avatar";
@@ -15,6 +16,7 @@ export const ChatMessageArea = (props: {
   profilePicture?: string | null;
   profileName?: string;
   role: "function" | "user" | "assistant" | "system" | "tool";
+  modelType?: "default" | "o3_reasoning";
   onCopy: () => void;
 }) => {
   const [isIconChecked, setIsIconChecked] = useState(false);
@@ -81,6 +83,9 @@ export const ChatMessageArea = (props: {
             )}
           >
             {props.profileName}
+            {props.role === "assistant" && props.modelType === "o3_reasoning" && (
+              <Sparkles size={12} className="text-yellow-400 animate-pulse ml-1" />
+            )}
           </div>
         </div>
         <div className=" h-7 flex items-center justify-between">
