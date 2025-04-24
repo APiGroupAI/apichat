@@ -113,12 +113,14 @@ export const CreateChatMessage = async ({
   role,
   chatThreadId,
   multiModalImage,
+  modelType,
 }: {
   name: string;
   role: ChatRole;
   content: string;
   chatThreadId: string;
   multiModalImage?: string;
+  modelType?: "default" | "o3_reasoning";
 }): Promise<ServerActionResponse<ChatMessageModel>> => {
   const userId = await userHashedId();
   const modelToSave: ChatMessageModel = {
@@ -132,6 +134,7 @@ export const CreateChatMessage = async ({
     threadId: chatThreadId,
     userId: userId,
     multiModalImage: multiModalImage,
+    modelType: modelType,
   };
   return await UpsertChatMessage(modelToSave);
 };

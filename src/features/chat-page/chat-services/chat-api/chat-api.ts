@@ -123,6 +123,7 @@ export const ChatAPIEntry = async (props: UserPrompt, signal: AbortSignal) => {
   const readableStream = OpenAIStream({
     runner: runner,
     chatThread: currentChatThread,
+    modelType: modelType,
   });
 
   return new Response(readableStream, {

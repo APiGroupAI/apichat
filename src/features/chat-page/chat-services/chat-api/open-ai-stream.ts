@@ -7,9 +7,10 @@ import { APIUserAbortError } from "openai";
 export const OpenAIStream = (props: {
   runner: AsyncIterable<ChatCompletionChunk>;
   chatThread: ChatThreadModel;
+  modelType?: "default" | "o3_reasoning";
 }) => {
   const encoder = new TextEncoder();
-  const { runner, chatThread } = props;
+  const { runner, chatThread, modelType = "default" } = props;
 
   const readableStream = new ReadableStream({
     async start(controller) {
@@ -69,6 +70,7 @@ export const OpenAIStream = (props: {
                 content: finalContent,
                 role: "assistant",
                 chatThreadId: props.chatThread.id,
+                modelType: modelType,
               });
 
               const response: AzureChatCompletion = {
@@ -104,6 +106,7 @@ export const OpenAIStream = (props: {
                 content: finalContent,
                 role: "assistant",
                 chatThreadId: props.chatThread.id,
+                modelType: modelType,
               });
             } catch (saveError) {
               console.error("🔴 Error saving message after stream error:", saveError);
