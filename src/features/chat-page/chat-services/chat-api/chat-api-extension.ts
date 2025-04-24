@@ -1,7 +1,7 @@
 "use server";
 import "server-only";
 
-import { OpenAIInstance } from "@/features/common/services/openai";
+import { OpenAIInstance, OpenAIModelInstance } from "@/features/common/services/openai";
 import { FindExtensionByID } from "@/features/extensions-page/extension-services/extension-service";
 import { RunnableToolFunction } from "openai/lib/RunnableFunction";
 import { ChatCompletionStreamingRunner } from "openai/resources/beta/chat/completions";
@@ -13,19 +13,30 @@ export const ChatApiExtensions = async (props: {
   history: ChatCompletionMessageParam[];
   extensions: RunnableToolFunction<any>[];
   signal: AbortSignal;
+  model?: string;
+  apiVersion?: string;
+  modelType?: string;
 }): Promise<ChatCompletionStreamingRunner> => {
-  const { userMessage, history, signal, chatThread, extensions } = props;
+  const { userMessage, history, signal, chatThread, extensions, model, apiVersion, modelType } = props;
 
-  const openAI = OpenAIInstance();
+  const openAI = OpenAIModelInstance(model, apiVersion);
   const systemMessage = await extensionsSystemMessage(chatThread);
+  
+  // Check if this is an o-series model that requires a developer message
+  const isOSeriesModel = modelType === "o3_reasoning";
+  
+  // Add formatting prefix for o-series models to ensure markdown output
+  const formattingPrefix = isOSeriesModel ? "Formatting re-enabled - please enclose code blocks with appropriate markdown tags.\n\n" : "";
+  
   return openAI.beta.chat.completions.runTools(
     {
       model: "",
       stream: true,
       messages: [
         {
-          role: "system",
-          content: chatThread.personaMessage + "\n" + systemMessage,
+          // Use developer role for o-series models, system for others
+          role: isOSeriesModel ? "developer" : "system",
+          content: formattingPrefix + chatThread.personaMessage + "\n" + systemMessage,
         },
         ...history,
         {

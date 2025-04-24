@@ -35,6 +35,7 @@ class ChatState {
   public autoScroll: boolean = false;
   public userName: string = "";
   public chatThreadId: string = "";
+  public modelType: "default" | "o3_reasoning" = "default";
 
   private chatThread: ChatThreadModel | undefined;
 
@@ -72,6 +73,7 @@ class ChatState {
     this.messages = messages;
     this.userName = userName;
     this.loading = "idle";
+    this.modelType = "default";
   }
 
   public async AddExtensionToChatThread(extensionId: string) {
@@ -122,6 +124,10 @@ class ChatState {
 
   public updateAutoScroll(value: boolean) {
     this.autoScroll = value;
+  }
+
+  public updateModelType(type: "default" | "o3_reasoning") {
+    this.modelType = type;
   }
 
   private reset() {
@@ -298,6 +304,7 @@ class ChatState {
     const body = JSON.stringify({
       id: this.chatThreadId,
       message: this.input,
+      modelType: this.modelType,
     });
     formData.append("content", body);
 

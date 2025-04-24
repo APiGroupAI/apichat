@@ -18,6 +18,7 @@ import { GetDynamicExtensions } from "./chat-api-dynamic-extensions";
 import { ChatApiExtensions } from "./chat-api-extension";
 import { ChatApiMultimodal } from "./chat-api-multimodal";
 import { OpenAIStream } from "./open-ai-stream";
+import { OpenAI } from "openai";
 type ChatTypes = "extensions" | "chat-with-file" | "multimodal";
 
 export const ChatAPIEntry = async (props: UserPrompt, signal: AbortSignal) => {
@@ -63,6 +64,23 @@ export const ChatAPIEntry = async (props: UserPrompt, signal: AbortSignal) => {
     multiModalImage: props.multimodalImage,
   });
 
+  // Get the model to use based on user selection
+  const modelType = props.modelType || "default";
+  
+  // Default model uses AZURE_OPENAI_API_DEPLOYMENT_NAME
+  // o3_reasoning model uses AZURE_OPENAI_O3_DEPLOYMENT_NAME with fallback to "o3"
+  const model = modelType === "o3_reasoning" 
+    ? (process.env.AZURE_OPENAI_O3_DEPLOYMENT_NAME || "o3") 
+    : process.env.AZURE_OPENAI_API_DEPLOYMENT_NAME;
+  
+  // Use different API versions for different models
+  // O3 model requires the latest API version (2024-02-01-preview or newer)
+  const apiVersion = modelType === "o3_reasoning"
+    ? process.env.AZURE_OPENAI_O3_API_VERSION || "2025-03-01-preview"  // Try env var first, then fall back to hardcoded value
+    : process.env.AZURE_OPENAI_API_VERSION; // Use default API version for other models
+    
+  console.log(`Selected model type: ${modelType}, using deployment: ${model}, API version: ${apiVersion}`);
+
   let runner: ChatCompletionStreamingRunner;
 
   switch (chatType) {
@@ -72,6 +90,9 @@ export const ChatAPIEntry = async (props: UserPrompt, signal: AbortSignal) => {
         userMessage: props.message,
         history: history,
         signal: signal,
+        model: model,
+        apiVersion: apiVersion,
+        modelType: modelType,
       });
       break;
     case "multimodal":
@@ -80,6 +101,9 @@ export const ChatAPIEntry = async (props: UserPrompt, signal: AbortSignal) => {
         userMessage: props.message,
         file: props.multimodalImage,
         signal: signal,
+        model: model,
+        apiVersion: apiVersion,
+        modelType: modelType,
       });
       break;
     case "extensions":
@@ -89,6 +113,9 @@ export const ChatAPIEntry = async (props: UserPrompt, signal: AbortSignal) => {
         history: history,
         extensions: extension,
         signal: signal,
+        model: model,
+        apiVersion: apiVersion,
+        modelType: modelType,
       });
       break;
   }

@@ -2,7 +2,7 @@
 import "server-only";
 
 import { userHashedId } from "@/features/auth-page/helpers";
-import { OpenAIInstance } from "@/features/common/services/openai";
+import { OpenAIInstance, OpenAIModelInstance } from "@/features/common/services/openai";
 import {
   ChatCompletionStreamingRunner,
   ChatCompletionStreamParams,
@@ -17,11 +17,20 @@ export const ChatApiRAG = async (props: {
   userMessage: string;
   history: ChatCompletionMessageParam[];
   signal: AbortSignal;
+  model?: string;
+  apiVersion?: string;
+  modelType?: string;
 }): Promise<ChatCompletionStreamingRunner> => {
-  const { chatThread, userMessage, history, signal } = props;
+  const { chatThread, userMessage, history, signal, model, apiVersion, modelType } = props;
 
-  const openAI = OpenAIInstance();
+  const openAI = OpenAIModelInstance(model, apiVersion);
 
+  // Check if this is an o-series model that requires a developer message
+  const isOSeriesModel = modelType === "o3_reasoning";
+  
+  // Add formatting prefix for o-series models to ensure markdown output
+  const formattingPrefix = isOSeriesModel ? "Formatting re-enabled - please enclose code blocks with appropriate markdown tags.\n\n" : "";
+  
   const documentResponse = await SimilaritySearch(
     userMessage,
     10,
@@ -68,8 +77,8 @@ ${userMessage}
     stream: true,
     messages: [
       {
-        role: "system",
-        content: chatThread.personaMessage,
+        role: isOSeriesModel ? "developer" : "system",
+        content: formattingPrefix + chatThread.personaMessage,
       },
       ...history,
       {

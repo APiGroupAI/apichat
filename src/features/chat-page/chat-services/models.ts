@@ -40,6 +40,7 @@ export interface UserPrompt {
   id: string; // thread id
   message: string;
   multimodalImage: string;
+  modelType?: "default" | "o3_reasoning";
 }
 
 export interface ChatDocumentModel {

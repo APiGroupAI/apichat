@@ -23,6 +23,7 @@ import React, { useRef } from "react";
 import { chatStore, useChat } from "../chat-store";
 import { fileStore, useFileStore } from "./file/file-store";
 import { PromptSlider } from "./prompt/prompt-slider";
+import { ModelToggle } from "./model-toggle";
 import {
   speechToTextStore,
   useSpeechToText,
@@ -83,6 +84,7 @@ export const ChatInput = () => {
             }
           />
           <PromptSlider />
+          <ModelToggle />
         </ChatInputSecondaryActionArea>
         <ChatInputPrimaryActionArea>
           <ImageInput />
