@@ -1,9 +1,9 @@
 import { proxy, useSnapshot } from "valtio";
 class Menu {
-  public isMenuOpen: boolean;
+  public isMenuOpen: boolean = false;
 
   constructor() {
-    this.isMenuOpen = true;
+    this.isMenuOpen = false;
   }
 
   toggleMenu() {
@@ -14,5 +14,6 @@ class Menu {
 export const menuStore = proxy(new Menu());
 // Hook to use the menu state
 export const useMenuState = () => {
+  //console.log(menuStore.isMenuOpen);
   return useSnapshot(menuStore);
 };
