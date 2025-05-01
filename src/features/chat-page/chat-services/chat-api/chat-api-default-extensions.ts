@@ -53,8 +53,6 @@ async function executeCreateImage(
   userMessage: string,
   signal: AbortSignal
 ) {
-  console.log("createImage called with prompt:", args.prompt);
-
   if (!args.prompt) {
     return "No prompt provided";
   }
@@ -71,9 +69,8 @@ async function executeCreateImage(
   try {
     response = await openAI.images.generate(
       {
-        model: "dall-e-3",
-        prompt: userMessage,
-        response_format: "b64_json",
+        model: process.env.AZURE_OPENAI_DALLE_API_DEPLOYMENT_NAME,
+        prompt: args.prompt,
       },
       {
         signal,
@@ -90,26 +87,33 @@ async function executeCreateImage(
   }
 
   // Check the response is valid
-  if (response.data[0].b64_json === undefined) {
+  if (!response.data[0].b64_json && !response.data[0].url) {
     return {
       error:
         "There was an error creating the image: Invalid API response received. Return this message to the user and halt execution.",
     };
   }
 
-  // upload image to blob storage
-  const imageName = `${uniqueId()}.png`;
-
   try {
-    await UploadImageToStore(
-      threadId,
-      imageName,
-      Buffer.from(response.data[0].b64_json, "base64")
-    );
+    // Handle both URL and b64_json response formats
+    let imageUrl;
+    if (response.data[0].b64_json) {
+      // Handle b64_json response by storing to blob
+      const imageName = `${uniqueId()}.png`;
+      await UploadImageToStore(
+        threadId,
+        imageName,
+        Buffer.from(response.data[0].b64_json, "base64")
+      );
+      imageUrl = await GetImageUrl(threadId, imageName);
+    } else {
+      // Use direct URL if that's what was returned
+      imageUrl = response.data[0].url;
+    }
 
     const updated_response = {
       revised_prompt: response.data[0].revised_prompt,
-      url: await GetImageUrl(threadId, imageName),
+      url: imageUrl,
     };
 
     return updated_response;
@@ -117,7 +121,7 @@ async function executeCreateImage(
     console.error("🔴 error:\n", error);
     return {
       error:
-        "There was an error storing the image: " +
+        "There was an error processing the image: " +
         error +
         "Return this message to the user and halt execution.",
     };
