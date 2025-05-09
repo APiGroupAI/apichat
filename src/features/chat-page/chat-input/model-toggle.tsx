@@ -2,7 +2,7 @@
 
 import React from "react";
 import { chatStore, useChat } from "../chat-store";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/features/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, TooltipPortal } from "@/features/ui/tooltip";
 import { Switch } from "@/features/ui/switch";
 import { Label } from "@/features/ui/label";
 import { Sparkles } from "lucide-react";
@@ -36,11 +36,13 @@ export const ModelToggle = () => {
             </Label>
           </div>
         </TooltipTrigger>
-        <TooltipContent side="top">
-          <p className="max-w-xs text-sm">
-            Toggle to switch between the standard model and the advanced reasoning model for more complex queries.
-          </p>
-        </TooltipContent>
+        <TooltipPortal>
+          <TooltipContent side="top" className="z-50 max-w-xs">
+            <p className="text-sm">
+              Toggle to switch between the standard model and the advanced reasoning model for more complex queries.
+            </p>
+          </TooltipContent>
+        </TooltipPortal>
       </Tooltip>
     </TooltipProvider>
   );
