@@ -72,7 +72,7 @@ async function executeCreateImage(
         model: "gpt-image-1",
         prompt: args.prompt,
         size: "1024x1024",
-        quality: "auto",
+        quality: "auto" as any,
       },
       {
         signal,
