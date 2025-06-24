@@ -4,6 +4,13 @@ import { Button } from "@/features/ui/button";
 import { ClipboardCheckIcon, LinkIcon } from "lucide-react";
 import { FC, useEffect, useState } from "react";
 import { useToast } from "@/features/ui/use-toast";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+  TooltipPortal,
+} from "@/features/ui/tooltip";
 
 interface Props {
   id: string;
@@ -30,9 +37,22 @@ export const CopyStartNewPersonaChat: FC<Props> = ({ id }) => {
   };
 
   return (
-    <Button variant="outline" onClick={handleCopy} className="gap-2">
-      {copied ? <ClipboardCheckIcon size={18} /> : <LinkIcon size={18} />}
-      Copy link
-    </Button>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="outline"
+            onClick={handleCopy}
+            size="icon"
+            className="w-9 h-9"
+          >
+            {copied ? <ClipboardCheckIcon size={18} /> : <LinkIcon size={18} />}
+          </Button>
+        </TooltipTrigger>
+        <TooltipPortal>
+          <TooltipContent side="top">Copy link to share with others</TooltipContent>
+        </TooltipPortal>
+      </Tooltip>
+    </TooltipProvider>
   );
 }; 
