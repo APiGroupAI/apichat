@@ -6,6 +6,7 @@ import { ChatDocumentModel, ChatThreadModel } from "../chat-services/models";
 import { DocumentDetail } from "./document-detail";
 import { ExtensionDetail } from "./extension-detail";
 import { PersonaDetail } from "./persona-detail";
+import AddPersonaButton from "./add-persona-button";
 
 interface Props {
   chatThread: ChatThreadModel;
@@ -30,6 +31,7 @@ export const ChatHeader: FC<Props> = (props) => {
           </span>
         </div>
         <div className="flex gap-2">
+          <AddPersonaButton chatThread={props.chatThread} />
           <PersonaDetail chatThread={props.chatThread} />
           <DocumentDetail chatDocuments={props.chatDocuments} />
           <ExtensionDetail

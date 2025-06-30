@@ -370,6 +370,101 @@ export const FindPersonaForCurrentUser = async (
   }
 };
 
+export const ImportPersonaFromChat = async (
+  chatThread: ChatThreadModel
+): Promise<ServerActionResponse<PersonaModel>> => {
+  // Only import if persona info exists
+  if (!chatThread.personaMessage || chatThread.personaMessage.trim() === "") {
+    return {
+      status: "ERROR",
+      errors: [{ message: "This chat does not contain persona data to import." }],
+    };
+  }
+
+  const currentUser = await getCurrentUser();
+  const userId = await userHashedId();
+
+  // Check for duplicate personas with the same content for this user
+  try {
+    const querySpec: SqlQuerySpec = {
+      query: "SELECT * FROM root r WHERE r.type=@type AND r.userId=@userId AND r.personaMessage=@personaMessage",
+      parameters: [
+        {
+          name: "@type",
+          value: PERSONA_ATTRIBUTE,
+        },
+        {
+          name: "@userId",
+          value: userId,
+        },
+        {
+          name: "@personaMessage",
+          value: chatThread.personaMessage,
+        },
+      ],
+    };
+
+    const { resources: existingPersonas } = await HistoryContainer()
+      .items.query<PersonaModel>(querySpec)
+      .fetchAll();
+
+    if (existingPersonas.length > 0) {
+      return {
+        status: "ERROR",
+        errors: [{ 
+          message: `You already have a persona named "${existingPersonas[0].name}" with the same content.` 
+        }],
+      };
+    }
+  } catch (error) {
+    console.error("Error checking for duplicates:", error);
+    // Continue with import if duplicate check fails
+  }
+
+  const modelToSave: PersonaModel = {
+    id: uniqueId(),
+    name:
+      chatThread.personaMessageTitle && chatThread.personaMessageTitle !== ""
+        ? chatThread.personaMessageTitle
+        : "Imported Persona",
+    description: `Imported from chat thread ${chatThread.name}`,
+    personaMessage: chatThread.personaMessage,
+    isPublished: false,
+    userId: userId,
+    createdAt: new Date(),
+    type: PERSONA_ATTRIBUTE,
+  };
+
+  const validation = ValidateSchema(modelToSave);
+  if (validation.status !== "OK") {
+    return validation;
+  }
+
+  try {
+    const { resource } = await HistoryContainer().items.create<PersonaModel>(
+      modelToSave
+    );
+
+    if (resource) {
+      return {
+        status: "OK",
+        response: resource,
+      };
+    }
+
+    return {
+      status: "ERROR",
+      errors: [{ message: "Error importing persona" }],
+    };
+  } catch (error) {
+    return {
+      status: "ERROR",
+      errors: [{ message: `Error importing persona: ${error}` }],
+    };
+  }
+};
+
+// Utility: validate persona schema
 const ValidateSchema = (model: PersonaModel): ServerActionResponse => {
   const validatedFields = PersonaModelSchema.safeParse(model);
 
