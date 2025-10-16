@@ -1,6 +1,6 @@
 import {
+  hashValue,
   userSession,
-  userHashedId,
 } from "@/features/auth-page/helpers";
 import { HistoryContainer } from "@/features/common/services/cosmos";
 import {
@@ -83,17 +83,47 @@ const portalThreadShape = (
 
 export async function GET(request: Request) {
   try {
-    const user = await userSession();
+    const url = new URL(request.url);
+    const providedToken = request.headers.get("x-internal-token");
+    const configuredToken = process.env.EXPORT_THREADS_INTERNAL_TOKEN;
+    const isInternalRequest = Boolean(providedToken);
 
-    if (!user) {
-      return NextResponse.json(
-        { error: "User not authenticated" },
-        { status: 401 }
-      );
+    let userEmail: string;
+
+    if (isInternalRequest) {
+      if (!configuredToken || providedToken !== configuredToken) {
+        return NextResponse.json(
+          { error: "Invalid internal token" },
+          { status: 401 }
+        );
+      }
+
+      const targetEmail = url.searchParams.get("userEmail");
+      if (!targetEmail) {
+        return NextResponse.json(
+          {
+            error:
+              "Missing required userEmail query parameter for internal export",
+          },
+          { status: 400 }
+        );
+      }
+
+      userEmail = targetEmail;
+    } else {
+      const user = await userSession();
+
+      if (!user) {
+        return NextResponse.json(
+          { error: "User not authenticated" },
+          { status: 401 }
+        );
+      }
+
+      userEmail = user.email;
     }
 
-    const legacyUserId = await userHashedId();
-    const url = new URL(request.url);
+    const legacyUserId = hashValue(userEmail);
     const format = url.searchParams.get("format");
 
     const container = HistoryContainer();
@@ -174,10 +204,10 @@ export async function GET(request: Request) {
     if (format === "portal") {
       const portalPayload = {
         user: {
-          email: user.email,
+          email: userEmail,
           legacyUserId,
         },
-        threads: portalThreadShape(compiledThreads, user.email, legacyUserId),
+        threads: portalThreadShape(compiledThreads, userEmail, legacyUserId),
       };
 
       return NextResponse.json(portalPayload, {
@@ -188,7 +218,7 @@ export async function GET(request: Request) {
     }
 
     const responsePayload = {
-      userId: user.email,
+      userId: userEmail,
       legacyUserId,
       threads: compiledThreads,
     };
