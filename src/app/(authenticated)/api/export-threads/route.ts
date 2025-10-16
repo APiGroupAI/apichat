@@ -1,7 +1,4 @@
-import {
-  hashValue,
-  userSession,
-} from "@/features/auth-page/helpers";
+import { hashValue, userSession } from "@/features/auth-page/helpers";
 import { HistoryContainer } from "@/features/common/services/cosmos";
 import {
   CHAT_DOCUMENT_ATTRIBUTE,
@@ -13,6 +10,10 @@ import {
 } from "@/features/chat-page/chat-services/models";
 import { SqlQuerySpec } from "@azure/cosmos";
 import { NextResponse } from "next/server";
+
+export const runtime = "nodejs";
+export const preferredRegion = "auto";
+export const maxDuration = 120;
 
 type LegacyThreadBundle = {
   thread: ChatThreadModel;
@@ -137,14 +138,6 @@ export async function GET(request: Request) {
       ],
     };
 
-    const {
-      resources: threads = [],
-    } = await container.items
-      .query<ChatThreadModel>(threadQuery, {
-        partitionKey: legacyUserId,
-      })
-      .fetchAll();
-
     const messageQuery: SqlQuerySpec = {
       query:
         "SELECT * FROM c WHERE c.type = @type AND c.userId = @userId AND c.isDeleted = false",
@@ -153,14 +146,6 @@ export async function GET(request: Request) {
         { name: "@userId", value: legacyUserId },
       ],
     };
-
-    const {
-      resources: messages = [],
-    } = await container.items
-      .query<ChatMessageModel>(messageQuery, {
-        partitionKey: legacyUserId,
-      })
-      .fetchAll();
 
     const documentQuery: SqlQuerySpec = {
       query:
@@ -171,13 +156,27 @@ export async function GET(request: Request) {
       ],
     };
 
-    const {
-      resources: documents = [],
-    } = await container.items
-      .query<ChatDocumentModel>(documentQuery, {
-        partitionKey: legacyUserId,
-      })
-      .fetchAll();
+    const [
+      { resources: threads = [] },
+      { resources: messages = [] },
+      { resources: documents = [] },
+    ] = await Promise.all([
+      container.items
+        .query<ChatThreadModel>(threadQuery, {
+          partitionKey: legacyUserId,
+        })
+        .fetchAll(),
+      container.items
+        .query<ChatMessageModel>(messageQuery, {
+          partitionKey: legacyUserId,
+        })
+        .fetchAll(),
+      container.items
+        .query<ChatDocumentModel>(documentQuery, {
+          partitionKey: legacyUserId,
+        })
+        .fetchAll(),
+    ]);
 
     const messagesByThread = new Map<string, ChatMessageModel[]>();
     messages.forEach((message) => {
