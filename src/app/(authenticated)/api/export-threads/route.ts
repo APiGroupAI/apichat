@@ -89,7 +89,8 @@ export async function GET(request: Request) {
     const configuredToken = process.env.EXPORT_THREADS_INTERNAL_TOKEN;
     const isInternalRequest = Boolean(providedToken);
 
-    let userEmail: string;
+    let userEmail: string | null = null;
+    let legacyUserId: string;
 
     if (isInternalRequest) {
       if (!configuredToken || providedToken !== configuredToken) {
@@ -99,18 +100,25 @@ export async function GET(request: Request) {
         );
       }
 
-      const targetEmail = url.searchParams.get("userEmail");
-      if (!targetEmail) {
+      const targetEmail = url.searchParams.get("userEmail")?.trim();
+      const targetLegacyId = url.searchParams.get("legacyUserId")?.trim();
+
+      if (!targetEmail && !targetLegacyId) {
         return NextResponse.json(
           {
             error:
-              "Missing required userEmail query parameter for internal export",
+              "Missing required userEmail or legacyUserId query parameter for internal export",
           },
           { status: 400 }
         );
       }
 
-      userEmail = targetEmail;
+      if (targetEmail) {
+        userEmail = targetEmail;
+        legacyUserId = hashValue(targetEmail);
+      } else {
+        legacyUserId = targetLegacyId!;
+      }
     } else {
       const user = await userSession();
 
@@ -122,10 +130,20 @@ export async function GET(request: Request) {
       }
 
       userEmail = user.email;
+      legacyUserId = hashValue(userEmail);
     }
 
-    const legacyUserId = hashValue(userEmail);
     const format = url.searchParams.get("format");
+
+    if (format === "portal" && !userEmail) {
+      return NextResponse.json(
+        {
+          error:
+            "Portal export requires userEmail. Provide userEmail alongside legacyUserId.",
+        },
+        { status: 400 }
+      );
+    }
 
     const container = HistoryContainer();
 
@@ -203,10 +221,10 @@ export async function GET(request: Request) {
     if (format === "portal") {
       const portalPayload = {
         user: {
-          email: userEmail,
+          email: userEmail!,
           legacyUserId,
         },
-        threads: portalThreadShape(compiledThreads, userEmail, legacyUserId),
+        threads: portalThreadShape(compiledThreads, userEmail!, legacyUserId),
       };
 
       return NextResponse.json(portalPayload, {
@@ -217,7 +235,7 @@ export async function GET(request: Request) {
     }
 
     const responsePayload = {
-      userId: userEmail,
+      userId: userEmail ?? legacyUserId,
       legacyUserId,
       threads: compiledThreads,
     };
