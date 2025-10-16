@@ -1,4 +1,3 @@
-import { ChatContextMenu } from "@/features/chat-page/chat-menu/chat-context-menu";
 import { NewChat } from "@/features/chat-page/chat-menu/new-chat";
 import { AddExtension } from "@/features/extensions-page/add-extension/add-new-extension";
 import { ExtensionCard } from "@/features/extensions-page/extension-card/extension-card";
@@ -38,7 +37,7 @@ export const ChatHome: FC<ChatPersonaProps> = (props) => {
 
         <div className="flex p-2 px-3 justify-center">
           <div className="flex gap-2 pr-3">
-              <NewChat size="lg" textSize="20px"/>
+            <NewChat size="lg" textSize="20px" />
           </div>
         </div>
         
