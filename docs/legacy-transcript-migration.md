@@ -36,6 +36,7 @@
 
 - **Route:** `GET /api/export-threads`
 - **Auth:** Accepts either an authenticated session or an `x-internal-token` header that matches `EXPORT_THREADS_INTERNAL_TOKEN`. Internal callers must supply either `?userEmail=<address>` (hashed internally) or `?legacyUserId=<hash>` to target the correct partition; `format=portal` requires the email form.
+- **Email casing:** When `userEmail` is provided the service checks both the raw value and its lowercase form to tolerate casing differences, but for deterministic lookups prefer sending the precomputed `legacyUserId` (sha256 of the lowercase email).
 - **Payload:** Returns `{ userId, legacyUserId, threads[] }` where each thread contains the original thread document, its messages, and any associated documents. Responses stream from Cosmos with `isDeleted = false`.
 - **Portal format:** Append `?format=portal` to receive data reshaped for the new portal schema with `metadata.legacyTranscript = true` and messages sorted by timestamp.
 - **Download:** The route sets a `Content-Disposition` header so browsers download the JSON directly. The legacy UI exposes this via “Export legacy threads” under the chat home page.

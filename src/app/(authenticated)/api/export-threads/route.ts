@@ -90,7 +90,7 @@ export async function GET(request: Request) {
     const isInternalRequest = Boolean(providedToken);
 
     let userEmail: string | null = null;
-    let legacyUserId: string;
+    let providedLegacyId: string | null = null;
 
     if (isInternalRequest) {
       if (!configuredToken || providedToken !== configuredToken) {
@@ -115,9 +115,8 @@ export async function GET(request: Request) {
 
       if (targetEmail) {
         userEmail = targetEmail;
-        legacyUserId = hashValue(targetEmail);
       } else {
-        legacyUserId = targetLegacyId!;
+        providedLegacyId = targetLegacyId!;
       }
     } else {
       const user = await userSession();
@@ -130,7 +129,6 @@ export async function GET(request: Request) {
       }
 
       userEmail = user.email;
-      legacyUserId = hashValue(userEmail);
     }
 
     const format = url.searchParams.get("format");
@@ -146,77 +144,165 @@ export async function GET(request: Request) {
     }
 
     const container = HistoryContainer();
+    const candidateHashes: string[] = [];
 
-    const threadQuery: SqlQuerySpec = {
-      query:
-        "SELECT * FROM c WHERE c.type = @type AND c.userId = @userId AND c.isDeleted = false",
-      parameters: [
-        { name: "@type", value: CHAT_THREAD_ATTRIBUTE },
-        { name: "@userId", value: legacyUserId },
-      ],
-    };
+    if (providedLegacyId) {
+      candidateHashes.push(providedLegacyId);
+    } else if (userEmail) {
+      const trimmedEmail = userEmail.trim();
+      const directHash = hashValue(trimmedEmail);
+      candidateHashes.push(directHash);
 
-    const messageQuery: SqlQuerySpec = {
-      query:
-        "SELECT * FROM c WHERE c.type = @type AND c.userId = @userId AND c.isDeleted = false",
-      parameters: [
-        { name: "@type", value: MESSAGE_ATTRIBUTE },
-        { name: "@userId", value: legacyUserId },
-      ],
-    };
-
-    const documentQuery: SqlQuerySpec = {
-      query:
-        "SELECT * FROM c WHERE c.type = @type AND c.userId = @userId AND c.isDeleted = false",
-      parameters: [
-        { name: "@type", value: CHAT_DOCUMENT_ATTRIBUTE },
-        { name: "@userId", value: legacyUserId },
-      ],
-    };
-
-    const [
-      { resources: threads = [] },
-      { resources: messages = [] },
-      { resources: documents = [] },
-    ] = await Promise.all([
-      container.items
-        .query<ChatThreadModel>(threadQuery, {
-          partitionKey: legacyUserId,
-        })
-        .fetchAll(),
-      container.items
-        .query<ChatMessageModel>(messageQuery, {
-          partitionKey: legacyUserId,
-        })
-        .fetchAll(),
-      container.items
-        .query<ChatDocumentModel>(documentQuery, {
-          partitionKey: legacyUserId,
-        })
-        .fetchAll(),
-    ]);
-
-    const messagesByThread = new Map<string, ChatMessageModel[]>();
-    messages.forEach((message) => {
-      if (!messagesByThread.has(message.threadId)) {
-        messagesByThread.set(message.threadId, []);
+      const lowerEmail = trimmedEmail.toLowerCase();
+      const lowerHash = hashValue(lowerEmail);
+      if (lowerHash !== directHash) {
+        candidateHashes.push(lowerHash);
       }
-      messagesByThread.get(message.threadId)!.push(message);
-    });
+    }
 
-    const documentsByThread = new Map<string, ChatDocumentModel[]>();
-    documents.forEach((document) => {
-      if (!documentsByThread.has(document.chatThreadId)) {
-        documentsByThread.set(document.chatThreadId, []);
+    const uniqueCandidates = Array.from(new Set(candidateHashes)).filter(Boolean);
+
+    if (uniqueCandidates.length === 0) {
+      return NextResponse.json(
+        { error: "Unable to resolve user partition for export." },
+        { status: 400 }
+      );
+    }
+
+    type FetchResult = {
+      bundles: LegacyThreadBundle[];
+      counts: {
+        threads: number;
+        messages: number;
+        documents: number;
+      };
+    };
+
+    const fetchPartitionData = async (partitionKey: string): Promise<FetchResult> => {
+      const threadQuery: SqlQuerySpec = {
+        query:
+          "SELECT * FROM c WHERE c.type = @type AND c.userId = @userId AND c.isDeleted = false",
+        parameters: [
+          { name: "@type", value: CHAT_THREAD_ATTRIBUTE },
+          { name: "@userId", value: partitionKey },
+        ],
+      };
+
+      const messageQuery: SqlQuerySpec = {
+        query:
+          "SELECT * FROM c WHERE c.type = @type AND c.userId = @userId AND c.isDeleted = false",
+        parameters: [
+          { name: "@type", value: MESSAGE_ATTRIBUTE },
+          { name: "@userId", value: partitionKey },
+        ],
+      };
+
+      const documentQuery: SqlQuerySpec = {
+        query:
+          "SELECT * FROM c WHERE c.type = @type AND c.userId = @userId AND c.isDeleted = false",
+        parameters: [
+          { name: "@type", value: CHAT_DOCUMENT_ATTRIBUTE },
+          { name: "@userId", value: partitionKey },
+        ],
+      };
+
+      const [
+        { resources: threads = [] },
+        { resources: messages = [] },
+        { resources: documents = [] },
+      ] = await Promise.all([
+        container.items
+          .query<ChatThreadModel>(threadQuery, {
+            partitionKey,
+          })
+          .fetchAll(),
+        container.items
+          .query<ChatMessageModel>(messageQuery, {
+            partitionKey,
+          })
+          .fetchAll(),
+        container.items
+          .query<ChatDocumentModel>(documentQuery, {
+            partitionKey,
+          })
+          .fetchAll(),
+      ]);
+
+      const messagesByThread = new Map<string, ChatMessageModel[]>();
+      messages.forEach((message) => {
+        if (!messagesByThread.has(message.threadId)) {
+          messagesByThread.set(message.threadId, []);
+        }
+        messagesByThread.get(message.threadId)!.push(message);
+      });
+
+      const documentsByThread = new Map<string, ChatDocumentModel[]>();
+      documents.forEach((document) => {
+        if (!documentsByThread.has(document.chatThreadId)) {
+          documentsByThread.set(document.chatThreadId, []);
+        }
+        documentsByThread.get(document.chatThreadId)!.push(document);
+      });
+
+      const bundles: LegacyThreadBundle[] = threads.map((thread) => ({
+        thread,
+        messages: sortByCreatedAt(messagesByThread.get(thread.id) ?? []),
+        documents: documentsByThread.get(thread.id) ?? [],
+      }));
+
+      return {
+        bundles,
+        counts: {
+          threads: threads.length,
+          messages: messages.length,
+          documents: documents.length,
+        },
+      };
+    };
+
+    let legacyUserId: string | null = null;
+    let compiledThreads: LegacyThreadBundle[] = [];
+    let lastCounts: FetchResult["counts"] = {
+      threads: 0,
+      messages: 0,
+      documents: 0,
+    };
+
+    for (let i = 0; i < uniqueCandidates.length; i++) {
+      const candidate = uniqueCandidates[i];
+      const result = await fetchPartitionData(candidate);
+      const hasContent =
+        result.counts.threads > 0 ||
+        result.counts.messages > 0 ||
+        result.counts.documents > 0;
+
+      legacyUserId = candidate;
+      compiledThreads = result.bundles;
+      lastCounts = result.counts;
+
+      if (hasContent || i === uniqueCandidates.length - 1) {
+        break;
       }
-      documentsByThread.get(document.chatThreadId)!.push(document);
-    });
+    }
 
-    const compiledThreads: LegacyThreadBundle[] = threads.map((thread) => ({
-      thread,
-      messages: sortByCreatedAt(messagesByThread.get(thread.id) ?? []),
-      documents: documentsByThread.get(thread.id) ?? [],
-    }));
+    if (!legacyUserId) {
+      return NextResponse.json(
+        { error: "Unable to resolve user partition for export." },
+        { status: 400 }
+      );
+    }
+
+    if (
+      lastCounts.threads === 0 &&
+      lastCounts.messages === 0 &&
+      lastCounts.documents === 0
+    ) {
+      console.warn(
+        `Legacy export returned no content for partition ${legacyUserId}. Candidates tried: ${uniqueCandidates.join(
+          ", "
+        )}`
+      );
+    }
 
     if (format === "portal") {
       const portalPayload = {
